@@ -4,7 +4,7 @@ A front-end for a database that allows users to work with students, class
 projects, and the grades students receive in class projects.
 """
 
-from flask import Flask
+from flask import Flask, render_template
 from flask.ext.sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -17,7 +17,6 @@ def connect_to_db(app):
     db.app = app
     db.init_app(app)
 
-
 def get_student_by_github(github):
     """Given a github account name, print information about the matching student."""
 
@@ -28,22 +27,37 @@ def get_student_by_github(github):
         """
     db_cursor = db.session.execute(QUERY, {'github': github})
     row = db_cursor.fetchone()
-    print "Student: %s %s\nGithub account: %s" % (row[0], row[1], row[2])
     return row
 
+def get_grades_by_github(github):
+    """Given a github account name, print information about the matching student's grades."""
+   
+    (first, last, github) = get_student_by_github(github)
 
-def make_new_student(first_name, last_name, github):
-    """Add a new student and print confirmation.
+    QUERY = """
+        SELECT project_title, grade
+        FROM Grades
+        WHERE student_github = :github
+        """
 
-    Given a first name, last name, and GitHub account, add student to the
-    database and print a confirmation message.
-    """
+    db_cursor = db.session.execute(QUERY, {'github': github})
+    rows = db_cursor.fetchall()
+
+    html = render_template("student_info.html",
+                            first=first,
+                            last=last,
+                            github=github,
+                            rows=rows)
+    return html
+
+def make_new_student(first, last, github):
+    """Add student to database and confirmation message for user."""
 
     QUERY = """INSERT INTO Students VALUES (:first_name, :last_name, :github)"""
-    db_cursor = db.session.execute(QUERY, {'first_name': first_name, 'last_name': last_name, 'github': github})
+    db_cursor = db.session.execute(QUERY, {'first_name': first, 'last_name': last, 'github': github})
     db.session.commit()
-    print "Successfully added student: %s %s" % (first_name, last_name)
 
+    return "Success"
 
 def get_project_by_title(title):
     """Given a project title, print information about the project."""
